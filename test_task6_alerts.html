@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task 6: Alerts System Verification</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .header {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 24px;
+    }
+    .description {
+      color: #666;
+      font-size: 14px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 20px;
+    }
+    .dashboard-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      min-height: 600px;
+    }
+    .console-container {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 800px;
+      overflow-y: auto;
+    }
+    .console-container pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .controls {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-left: auto;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .status.running {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .status.passed {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.failed {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      min-height: 600px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Task 6: Alerts System Verification</h1>
+      <div class="description">
+        Verifying that the alerts system meets all requirements (8.1-8.10): 
+        alert creation for Phishing/Suspicious verdicts, chronological ordering, 
+        badge count accuracy, dismiss functionality, and empty state handling.
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="runTests" onclick="runTests()">Run All Tests</button>
+      <button onclick="clearConsole()">Clear Console</button>
+      <div class="status" id="status" style="display: none;">Ready</div>
+    </div>
+
+    <div class="layout">
+      <div class="dashboard-container">
+        <iframe id="dashboardFrame" src="phishing_detection_dashboard.html"></iframe>
+      </div>
+      <div class="console-container">
+        <pre id="console">Console output will appear here...</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let consoleOutput = [];
+    const consoleElement = document.getElementById('console');
+    const statusElement = document.getElementById('status');
+
+    // Intercept console methods
+    const originalLog = console.log;
+    const originalError = console.error;
+
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      consoleOutput.push(message);
+      updateConsole();
+    };
+
+    console.error = function(...args) {
+      originalError.apply(console, args);
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      consoleOutput.push(`ERROR: ${message}`);
+      updateConsole();
+    };
+
+    function updateConsole() {
+      consoleElement.textContent = consoleOutput.join('\n');
+      consoleElement.parentElement.scrollTop = consoleElement.parentElement.scrollHeight;
+    }
+
+    function clearConsole() {
+      consoleOutput = [];
+      consoleElement.textContent = 'Console cleared...';
+    }
+
+    function updateStatus(text, type) {
+      statusElement.textContent = text;
+      statusElement.className = `status ${type}`;
+      statusElement.style.display = 'block';
+    }
+
+    async function runTests() {
+      const button = document.getElementById('runTests');
+      button.disabled = true;
+      clearConsole();
+      updateStatus('Running tests...', 'running');
+
+      try {
+        const iframe = document.getElementById('dashboardFrame');
+        const iframeWindow = iframe.contentWindow;
+
+        // Wait for iframe to load
+        if (!iframeWindow.runAllTests) {
+          console.log('Loading verification script into dashboard...');
+          
+          // Load the verification script into the iframe
+          const script = document.createElement('script');
+          script.src = 'verify_task6_alerts.js';
+          iframe.contentDocument.head.appendChild(script);
+
+          // Wait for script to load
+          await new Promise(resolve => {
+            script.onload = resolve;
+          });
+
+          console.log('Verification script loaded successfully.\n');
+        }
+
+        // Run the tests in the iframe context
+        console.log('Starting test execution...\n');
+        const results = await iframeWindow.runAllTests();
+
+        // Update status based on results
+        if (results.failed === 0) {
+          updateStatus(`All ${results.passed} tests passed! ✓`, 'passed');
+        } else {
+          updateStatus(`${results.failed} of ${results.tests.length} tests failed`, 'failed');
+        }
+
+      } catch (error) {
+        console.error('Test execution failed:', error);
+        updateStatus('Test execution error', 'failed');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    // Auto-run tests on load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        console.log('Page loaded. Click "Run All Tests" to begin verification.\n');
+      }, 500);
+    });
+  </script>
+</body>
+</html>

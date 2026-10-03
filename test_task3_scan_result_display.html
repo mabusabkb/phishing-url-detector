@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task 3 Verification: Scan Result Display and Loading States</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 2px solid #e0e0e0;
+    }
+    .test-section.pass {
+      border-color: #1D9E75;
+      background: #E1F5EE;
+    }
+    .test-section.fail {
+      border-color: #E24B4A;
+      background: #FCEBEB;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #333;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #555;
+      margin-top: 0;
+    }
+    .test-result {
+      font-weight: bold;
+      padding: 8px 12px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+    .test-result.pass {
+      background: #1D9E75;
+      color: white;
+    }
+    .test-result.fail {
+      background: #E24B4A;
+      color: white;
+    }
+    .test-details {
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(0,0,0,0.05);
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .iframe-container {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin: 10px 0;
+      height: 700px;
+      overflow: hidden;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .summary {
+      background: #333;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .summary h2 {
+      color: white;
+      margin-top: 0;
+    }
+    .test-list {
+      list-style: none;
+      padding: 0;
+    }
+    .test-list li {
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    .test-list li:last-child {
+      border-bottom: none;
+    }
+    .test-list .pass-icon {
+      color: #1D9E75;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+    .test-list .fail-icon {
+      color: #E24B4A;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+    button {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>Task 3 Verification: Scan Result Display and Loading States</h1>
+  
+  <div class="summary" id="summary">
+    <h2>Test Summary</h2>
+    <p>Running verification tests...</p>
+  </div>
+
+  <div id="test-results"></div>
+
+  <div class="test-section">
+    <h2>Interactive Dashboard (for manual verification)</h2>
+    <p>Use this embedded dashboard to manually verify visual aspects:</p>
+    <button onclick="testSafe()">Test Safe URL</button>
+    <button onclick="testSuspicious()">Test Suspicious URL</button>
+    <button onclick="testPhishing()">Test Phishing URL</button>
+    <div class="iframe-container">
+      <iframe id="dashboard-iframe" src="phishing_detection_dashboard.html"></iframe>
+    </div>
+  </div>
+
+  <script>
+    const tests = [];
+    let passCount = 0;
+    let failCount = 0;
+
+    function addTest(name, requirement, testFn) {
+      tests.push({ name, requirement, testFn });
+    }
+
+    function testSafe() {
+      const iframe = document.getElementById('dashboard-iframe');
+      iframe.contentWindow.postMessage({ action: 'loadDemo', type: 'safe' }, '*');
+    }
+
+    function testSuspicious() {
+      const iframe = document.getElementById('dashboard-iframe');
+      iframe.contentWindow.postMessage({ action: 'loadDemo', type: 'suspicious' }, '*');
+    }
+
+    function testPhishing() {
+      const iframe = document.getElementById('dashboard-iframe');
+      iframe.contentWindow.postMessage({ action: 'loadDemo', type: 'phishing' }, '*');
+    }
+
+    // Test 1: Verdict badge displays with correct color coding (Req 4.1)
+    addTest(
+      'Verdict badge displays with correct color coding',
+      'Requirement 4.1',
+      async () => {
+        const iframe = document.getElementById('dashboard-iframe').contentWindow;
+        const doc = iframe.document;
+        
+        // Test safe verdict
+        const urlInput = doc.getElementById('url-input');
+        urlInput.value = 'https://github.com/anthropics/anthropic-sdk';
+        const scanBtn = doc.getElementById('scan-btn');
+        scanBtn.click();
+        
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        const safeBadge = doc.querySelector('.verdict-badge.safe');
+        if (!safeBadge) return { pass: false, details: 'Safe verdict badge not found' };
+        
+        const safeStyles = window.getComputedStyle(safeBadge);
+        const hasSafeColor = safeStyles.backgroundColor.includes('225, 245, 238') || 
+                             safeStyles.borderColor.includes('93, 202, 165');
+        
+        if (!hasSafeColor) return { pass: false, details: 'Safe badge does not have correct green color scheme' };
+        
+        // Test suspicious verdict
+        urlInput.value = 'http://paypa1-verify.net/account/confirm';
+        scanBtn.click();
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        const suspBadge = doc.querySelector('.verdict-badge.suspicious');
+        if (!suspBadge) return { pass: false, details: 'Suspicious verdict badge not found' };
+        
+        const suspStyles = window.getComputedStyle(suspBadge);
+        const hasSuspColor = suspStyles.backgroundColor.includes('250, 238, 218') || 
+                             suspStyles.borderColor.includes('239, 159, 39');
+        
+        if (!hasSuspColor) return { pass: false, details: 'Suspicious badge does not have correct orange color scheme' };
+        
+        // Test phishing verdict
+        urlInput.value = 'http://secure-bank-login.xyz/wellsfargo/signin/verify';
+        scanBtn.click();
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        const phishBadge = doc.querySelector('.verdict-badge.phishing');
+        if (!phishBadge) return { pass: false, details: 'Phishing verdict badge not found' };
+        
+        const phishStyles = window.getComputedStyle(phishBadge);
+        const hasPhishColor = phishStyles.backgroundColor.includes('252, 235, 235') || 
+                              phishStyles.borderColor.includes('226, 75, 74');
+        
+        if (!hasPhishColor) return { pass: false, details: 'Phishing badge does not have correct red color scheme' };
+        
+        return { pass: true, details: 'All verdict badges display with correct color coding: Safe (green), Suspicious (orange), Phishing (red)' };
+      }
+    );
+
+    // Test 2: Risk score displays as circular progress ring (Req 4.2)
+    addTest(
+      'Risk score displays as circular progress ring',
+      'Requirement 4.2',
+      async () => {
+        const iframe = document.getElementById('dashboard-iframe').contentWindow;
+        const doc = iframe.document;
+        
+        const urlInput = doc.getElementById('url-input');
+        urlInput.value = 'http://secure-bank-login.xyz/wellsfargo/signin/verify';
+        const scanBtn = doc.getElementById('scan-btn');
+        scanBtn.click();
+        
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        const scoreRing = doc.querySelector('.score-ring');
+        if (!scoreRing) return { pass: false, details: 'Score ring element not found' };
+        
+        const svg = scoreRing.querySelector('svg');
+        if (!svg) return { pass: false, details: 'SVG element not found in score ring' };
+        
+        const circles = svg.querySelectorAll('circle');
+        if (circles.length < 2) return { pass: false, details: 'Expected 2 circles (background and progress), found ' + circles.length };
+        
+        const progressCircle = circles[1];
+        const hasDashArray = progressCircle.hasAttribute('stroke-dasharray');
+        const hasDashOffset = progressCircle.hasAttribute('stroke-dashoffset');
+        
+        if (!hasDashArray || !hasDashOffset) {
+          return { pass: false, details: 'Progress circle missing stroke-dasharray or stroke-dashoffset attributes' };
+        }
+        
+        const scoreText = svg.querySelector('text');
+        if (!scoreText) return { pass: false, details: 'Score text not found in SVG' };
+        
+        const scoreValue = parseInt(scoreText.textContent);
+        if (isNaN(scoreValue) || scoreValue < 0 || scoreValue > 100) {
+          return { pass: false, details: 'Score value is invalid: ' + scoreText.textContent };
+        }
+        
+        return { pass: true, details: `Risk score ${scoreValue} displays as circular progress ring with proper SVG structure` };
+      }
+    );
+
+    // Test 3: All 8 detection signals display in grid layout (Req 4.3, 4.4)
+    addTest(
+      'All 8 detection signals display in grid layout',
+      'Requirements 4.3, 4.4',
+      async () => {
+        const iframe = document.getElementById('dashboard-iframe').contentWindow;
+        const doc = iframe.document;
+        
+        const urlInput = doc.getElementById('url-input');
+        urlInput.value = 'https://github.com/anthropics/anthropic-sdk';
+        const scanBtn = doc.getElementById('scan-btn');
+        scanBtn.click();
+        
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        const featuresGrid = doc.querySelector('.features-grid');
+        if (!featuresGrid) return { pass: false, details: 'Features grid not found' };
+        
+        const featureRows = featuresGrid.querySelectorAll('.feature-row');
+        if (featureRows.length !== 8) {
+          return { pass: false, details: `Expected 8 detection signals, found ${featureRows.length}` };
+        }
+        
+        const expectedSignals = [
+          'URL structure',
+          'Domain age',
+          'HTTPS / SSL',
+          'Redirects',
+          'Brand similarity',
+          'Page content',
+          'Google Safe Browsing',
+          'VirusTotal'
+        ];
+        
+        const foundSignals = [];
+        for (const row of featureRows) {
+          const icon = row.querySelector('.feat-icon');
+          const name = row.querySelector('.feat-name');
+          const value = row.querySelector('.feat-value');
+          const bar = row.querySelector('.feat-bar');
+          const tag = row.querySelector('.feat-tag');
+          
+          if (!icon || !name || !value || !bar || !tag) {
+            return { pass: false, details: 'Feature row missing required elements (icon, name, value, bar, or tag)' };
+          }
+          
+          foundSignals.push(name.textContent);
+        }
+        
+        const missingSignals = expectedSignals.filter(s => !foundSignals.includes(s));
+        if (missingSignals.length > 0) {
+          return { pass: false, details: 'Missing detection signals: ' + missingSignals.join(', ') };
+        }
+        
+        return { pass: true, details: 'All 8 detection signals display correctly with icon, name, value, risk bar, and status tag' };
+      }
+    );
+
+    // Test 4: Explanation section displays reasons (Req 4.5)
+    addTest(
+      'Explanation section displays reasons',
+      'Requirement 4.5',
+      async () => {
+        const iframe = document.getElementById('dashboard-iframe').contentWindow;
+        const doc = iframe.document;
+        
+        const urlInput = doc.getElementById('url-input');
+        urlInput.value = 'http://secure-bank-login.xyz/wellsfargo/signin/verify';
+        const scanBtn = doc.getElementById('scan-btn');
+        scanBtn.click();
+        
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        const explainBox = doc.querySelector('.explain-box');
+        if (!explainBox) return { pass: false, details: 'Explanation box not found' };
+        
+        const explainTitle = explainBox.querySelector('.explain-title');
+        if (!explainTitle || !explainTitle.textContent.toLowerCase().includes('why')) {
+          return { pass: false, details: 'Explanation title not found or does not contain "why"' };
+        }
+        
+        const reasonsContainer = explainBox.querySelector('.explain-reasons');
+        if (!reasonsContainer) return { pass: false, details: 'Reasons container not found' };
+        
+        const reasonItems = reasonsContainer.querySelectorAll('.reason-item');
+        if (reasonItems.length === 0) {
+          return { pass: false, details: 'No reason items found in explanation section' };
+        }
+        
+        for (const item of reasonItems) {
+          const dot = item.querySelector('.reason-dot');
+          if (!dot) return { pass: false, details: 'Reason item missing color dot indicator' };
+          
+          const text = item.textContent.trim();
+          if (!text || text.length < 10) {
+            return { pass: false, details: 'Reason item has insufficient text content' };
+          }
+        }
+        
+        return { pass: true, details: `Explanation section displays ${reasonItems.length} reasons with color-coded dots` };
+      }
+    );
+
+    // Test 5: URL and timestamp display (Req 4.6)
+    addTest(
+      'URL and timestamp display',
+      'Requirement 4.6',
+      async () => {
+        const iframe = document.getElementById('dashboard-iframe').contentWindow;
+        const doc = iframe.document;
+        
+        const testUrl = 'https://github.com/anthropics/anthropic-sdk';
+        const urlInput = doc.getElementById('url-input');
+        urlInput.value = testUrl;
+        const scanBtn = doc.getElementById('scan-btn');
+        scanBtn.click();
+        
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        const urlInfo = doc.querySelector('.url-info');
+        if (!urlInfo) return { pass: false, details: 'URL info section not found' };
+        
+        const urlText = urlInfo.querySelector('.url-text');
+        if (!urlText) return { pass: false, details: 'URL text element not found' };
+        
+        if (!urlText.textContent.includes(testUrl)) {
+          return { pass: false, details: `URL text does not contain the scanned URL. Expected: ${testUrl}, Found: ${urlText.textContent}` };
+        }
+        
+        const scanTime = urlInfo.querySelector('.scan-time');
+        if (!scanTime) return { pass: false, details: 'Scan time element not found' };
+        
+        const timeText = scanTime.textContent.toLowerCase();
+        if (!timeText.includes('scan') && !timeText.includes('just now') && !timeText.includes('risk score')) {
+          return { pass: false, details: 'Scan time does not contain expected timestamp information' };
+        }
+        
+        return { pass: true, details: 'URL and timestamp display correctly in result card' };
+      }
+    );
+
+    // Test 6: Report button shows for Suspicious/Phishing (Req 4.7)
+    addTest(
+      'Report button shows for Suspicious/Phishing verdicts',
+      'Requirement 4.7',
+      async () => {
+        const iframe = document.getElementById('dashboard-iframe').contentWindow;
+        const doc = iframe.document;
+        
+        // Test safe - should NOT have report button
+        const urlInput = doc.getElementById('url-input');
+        urlInput.value = 'https://github.com/anthropics/anthropic-sdk';
+        const scanBtn = doc.getElementById('scan-btn');
+        scanBtn.click();
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        let reportBtn = doc.querySelector('.btn-report');
+        if (reportBtn) {
+          return { pass: false, details: 'Report button should NOT appear for Safe verdict' };
+        }
+        
+        // Test suspicious - should have report button
+        urlInput.value = 'http://paypa1-verify.net/account/confirm';
+        scanBtn.click();
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        reportBtn = doc.querySelector('.btn-report');
+        if (!reportBtn) {
+          return { pass: false, details: 'Report button missing for Suspicious verdict' };
+        }
+        
+        // Test phishing - should have report button
+        urlInput.value = 'http://secure-bank-login.xyz/wellsfargo/signin/verify';
+        scanBtn.click();
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        reportBtn = doc.querySelector('.btn-report');
+        if (!reportBtn) {
+          return { pass: false, details: 'Report button missing for Phishing verdict' };
+        }
+        
+        return { pass: true, details: 'Report button correctly shows for Suspicious and Phishing verdicts, hidden for Safe' };
+      }
+    );
+
+    // Test 7: Loading state shows spinner and progress steps (Req 5.1-5.6)
+    addTest(
+      'Loading state shows spinner and progress steps',
+      'Requirements 5.1-5.6',
+      async () => {
+        const iframe = document.getElementById('dashboard-iframe').contentWindow;
+        const doc = iframe.document;
+        
+        const urlInput = doc.getElementById('url-input');
+        urlInput.value = 'https://github.com/anthropics/anthropic-sdk';
+        const scanBtn = doc.getElementById('scan-btn');
+        scanBtn.click();
+        
+        // Check immediately after click
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const loadingWrap = doc.querySelector('.loading-wrap');
+        if (!loadingWrap) return { pass: false, details: 'Loading wrapper not found during scan' };
+        
+        const spinner = loadingWrap.querySelector('.spinner');
+        if (!spinner) return { pass: false, details: 'Spinner not found in loading state' };
+        
+        const loadingSteps = loadingWrap.querySelector('.loading-steps');
+        if (!loadingSteps) return { pass: false, details: 'Loading steps container not found' };
+        
+        const stepElements = loadingSteps.querySelectorAll('.loading-step');
+        if (stepElements.length !== 6) {
+          return { pass: false, details: `Expected 6 detection steps, found ${stepElements.length}` };
+        }
+        
+        const expectedSteps = [
+          'Resolving domain',
+          'SSL certificate',
+          'Google Safe Browsing',
+          'VirusTotal',
+          'page content',
+          'ML risk score'
+        ];
+        
+        const stepTexts = Array.from(stepElements).map(el => el.textContent);
+        const missingSteps = expectedSteps.filter(step => 
+          !stepTexts.some(text => text.toLowerCase().includes(step.toLowerCase()))
+        );
+        
+        if (missingSteps.length > 0) {
+          return { pass: false, details: 'Missing expected steps: ' + missingSteps.join(', ') };
+        }
+        
+        // Check for active/done states during loading
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const hasActiveStep = Array.from(stepElements).some(el => 
+          el.className.includes('active')
+        );
+        
+        if (!hasActiveStep) {
+          return { pass: false, details: 'No active step indicator found during loading' };
+        }
+        
+        // Wait for completion
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        return { pass: true, details: 'Loading state displays spinner and 6 progress steps with active/done indicators' };
+      }
+    );
+
+    async function runTests() {
+      const resultsContainer = document.getElementById('test-results');
+      resultsContainer.innerHTML = '';
+      passCount = 0;
+      failCount = 0;
+
+      for (const test of tests) {
+        const section = document.createElement('div');
+        section.className = 'test-section';
+        
+        const title = document.createElement('h2');
+        title.textContent = test.name;
+        section.appendChild(title);
+        
+        const reqLabel = document.createElement('p');
+        reqLabel.innerHTML = `<strong>${test.requirement}</strong>`;
+        section.appendChild(reqLabel);
+        
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'test-result';
+        resultDiv.textContent = 'Running...';
+        section.appendChild(resultDiv);
+        
+        const detailsDiv = document.createElement('div');
+        detailsDiv.className = 'test-details';
+        section.appendChild(detailsDiv);
+        
+        resultsContainer.appendChild(section);
+        
+        try {
+          const result = await test.testFn();
+          
+          if (result.pass) {
+            passCount++;
+            section.className = 'test-section pass';
+            resultDiv.className = 'test-result pass';
+            resultDiv.textContent = '✓ PASS';
+          } else {
+            failCount++;
+            section.className = 'test-section fail';
+            resultDiv.className = 'test-result fail';
+            resultDiv.textContent = '✗ FAIL';
+          }
+          
+          detailsDiv.textContent = result.details;
+        } catch (error) {
+          failCount++;
+          section.className = 'test-section fail';
+          resultDiv.className = 'test-result fail';
+          resultDiv.textContent = '✗ ERROR';
+          detailsDiv.textContent = 'Test error: ' + error.message;
+        }
+      }
+      
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const summary = document.getElementById('summary');
+      const total = passCount + failCount;
+      const percentage = total > 0 ? Math.round((passCount / total) * 100) : 0;
+      
+      summary.innerHTML = `
+        <h2>Test Summary</h2>
+        <p><strong>Total Tests:</strong> ${total}</p>
+        <p><strong>Passed:</strong> ${passCount} (${percentage}%)</p>
+        <p><strong>Failed:</strong> ${failCount}</p>
+        <ul class="test-list">
+          ${tests.map((test, i) => {
+            const icon = i < passCount ? '<span class="pass-icon">✓</span>' : '<span class="fail-icon">✗</span>';
+            return `<li>${icon}${test.name}</li>`;
+          }).join('')}
+        </ul>
+      `;
+    }
+
+    // Wait for iframe to load, then run tests
+    window.addEventListener('load', () => {
+      const iframe = document.getElementById('dashboard-iframe');
+      iframe.addEventListener('load', () => {
+        setTimeout(() => {
+          runTests();
+        }, 1000);
+      });
+    });
+  </script>
+</body>
+</html>

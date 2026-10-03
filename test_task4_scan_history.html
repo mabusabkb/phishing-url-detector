@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task 4: Scan History Verification</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-section h2 {
+      margin-top: 0;
+      color: #333;
+      border-bottom: 2px solid #e0e0e0;
+      padding-bottom: 10px;
+    }
+    .test-case {
+      margin: 15px 0;
+      padding: 15px;
+      background: #f9f9f9;
+      border-left: 4px solid #ccc;
+      border-radius: 4px;
+    }
+    .test-case.pass {
+      border-left-color: #1D9E75;
+      background: #E1F5EE;
+    }
+    .test-case.fail {
+      border-left-color: #A32D2D;
+      background: #FCEBEB;
+    }
+    .test-case h3 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      color: #333;
+    }
+    .test-result {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .test-result.pass { color: #1D9E75; }
+    .test-result.fail { color: #A32D2D; }
+    .test-details {
+      font-size: 14px;
+      color: #666;
+      margin: 5px 0;
+    }
+    .summary {
+      background: #333;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .summary h1 {
+      margin: 0 0 10px 0;
+    }
+    .summary-stats {
+      display: flex;
+      gap: 30px;
+      margin-top: 15px;
+    }
+    .stat {
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .stat-label {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin: 15px 0;
+    }
+    .instructions {
+      background: #FFF9E6;
+      border: 1px solid #FFE066;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    .instructions h3 {
+      margin-top: 0;
+      color: #BA7517;
+    }
+    button {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #555;
+    }
+    .code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="summary">
+    <h1>Task 4: Scan History Functionality Verification</h1>
+    <p>Testing Requirements 6.1-6.8 for scan history tracking and management</p>
+    <div class="summary-stats">
+      <div>
+        <div class="stat" id="total-tests">0</div>
+        <div class="stat-label">Total Tests</div>
+      </div>
+      <div>
+        <div class="stat" style="color: #1D9E75;" id="passed-tests">0</div>
+        <div class="stat-label">Passed</div>
+      </div>
+      <div>
+        <div class="stat" style="color: #A32D2D;" id="failed-tests">0</div>
+        <div class="stat-label">Failed</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="instructions">
+    <h3>📋 Test Instructions</h3>
+    <p>This test suite verifies the scan history functionality. Click "Run All Tests" to execute automated verification.</p>
+    <button onclick="runAllTests()">Run All Tests</button>
+    <button onclick="resetTests()">Reset Tests</button>
+  </div>
+
+  <div id="test-results"></div>
+
+  <div class="test-section">
+    <h2>Dashboard Preview</h2>
+    <iframe id="dashboard-frame" src="phishing_detection_dashboard.html"></iframe>
+  </div>
+
+  <script>
+    const tests = [];
+    let passCount = 0;
+    let failCount = 0;
+
+    function addTest(requirement, name, testFn) {
+      tests.push({ requirement, name, testFn });
+    }
+
+    function updateSummary() {
+      document.getElementById('total-tests').textContent = tests.length;
+      document.getElementById('passed-tests').textContent = passCount;
+      document.getElementById('failed-tests').textContent = failCount;
+    }
+
+    function renderTestResult(requirement, name, passed, details) {
+      const resultsDiv = document.getElementById('test-results');
+      const testCase = document.createElement('div');
+      testCase.className = `test-case ${passed ? 'pass' : 'fail'}`;
+      testCase.innerHTML = `
+        <h3>${requirement}: ${name}</h3>
+        <div class="test-result ${passed ? 'pass' : 'fail'}">
+          ${passed ? '✓ PASS' : '✗ FAIL'}
+        </div>
+        <div class="test-details">${details}</div>
+      `;
+      resultsDiv.appendChild(testCase);
+    }
+
+    function resetTests() {
+      document.getElementById('test-results').innerHTML = '';
+      passCount = 0;
+      failCount = 0;
+      updateSummary();
+      // Reload iframe
+      document.getElementById('dashboard-frame').src = 'phishing_detection_dashboard.html';
+    }
+
+    async function runAllTests() {
+      resetTests();
+      
+      // Wait for iframe to load
+      await new Promise(resolve => {
+        const iframe = document.getElementById('dashboard-frame');
+        iframe.onload = resolve;
+      });
+
+      const iframe = document.getElementById('dashboard-frame');
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      const iframeWindow = iframe.contentWindow;
+
+      // Run each test
+      for (const test of tests) {
+        try {
+          const result = await test.testFn(iframeDoc, iframeWindow);
+          if (result.passed) {
+            passCount++;
+          } else {
+            failCount++;
+          }
+          renderTestResult(test.requirement, test.name, result.passed, result.details);
+        } catch (error) {
+          failCount++;
+          renderTestResult(test.requirement, test.name, false, `Error: ${error.message}`);
+        }
+      }
+
+      updateSummary();
+    }
+
+    // ===== TEST DEFINITIONS =====
+
+    // Req 6.1, 6.2: Verify scan results are added to history
+    addTest('Req 6.1, 6.2', 'Scan results added to history with correct data', async (doc, win) => {
+      const initialHistoryLength = win.history.length;
+      
+      // Perform a scan
+      const urlInput = doc.getElementById('url-input');
+      urlInput.value = 'https://github.com/test';
+      
+      // Trigger scan
+      win.startScan();
+      
+      // Wait for scan to complete (2.5 seconds for loading simulation)
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      
+      // Check if history was updated
+      const newHistoryLength = win.history.length;
+      
+      if (newHistoryLength <= initialHistoryLength) {
+        return {
+          passed: false,
+          details: `History not updated. Initial: ${initialHistoryLength}, After scan: ${newHistoryLength}`
+        };
+      }
+      
+      // Check the most recent history entry
+      const latestEntry = win.history[0];
+      
+      if (!latestEntry) {
+        return {
+          passed: false,
+          details: 'No history entry found at index 0'
+        };
+      }
+      
+      // Verify required fields
+      const hasUrl = latestEntry.url && latestEntry.url.includes('github.com/test');
+      const hasVerdict = ['safe', 'suspicious', 'phishing'].includes(latestEntry.verdict);
+      const hasScore = typeof latestEntry.score === 'number' && latestEntry.score >= 0 && latestEntry.score <= 100;
+      const hasTime = latestEntry.time && typeof latestEntry.time === 'string';
+      
+      if (!hasUrl || !hasVerdict || !hasScore || !hasTime) {
+        return {
+          passed: false,
+          details: `Missing required fields. URL: ${hasUrl}, Verdict: ${hasVerdict}, Score: ${hasScore}, Time: ${hasTime}`
+        };
+      }
+      
+      return {
+        passed: true,
+        details: `History entry added successfully with URL: ${latestEntry.url}, Verdict: ${latestEntry.verdict}, Score: ${latestEntry.score}, Time: ${latestEntry.time}`
+      };
+    });
+
+    // Req 6.3: Verify history displays in reverse chronological order
+    addTest('Req 6.3', 'History displays in reverse chronological order (newest first)', async (doc, win) => {
+      // Perform multiple scans
+      const urls = [
+        'https://test1.com',
+        'https://test2.com',
+        'https://test3.com'
+      ];
+      
+      const urlInput = doc.getElementById('url-input');
+      
+      for (const url of urls) {
+        urlInput.value = url;
+        win.startScan();
+        await new Promise(resolve => setTimeout(resolve, 2500));
+      }
+      
+      // Check history order
+      const historyArray = win.history;
+      
+      if (historyArray.length < 3) {
+        return {
+          passed: false,
+          details: `Not enough history entries. Expected at least 3, got ${historyArray.length}`
+        };
+      }
+      
+      // The most recent scan (test3.com) should be at index 0
+      const firstEntry = historyArray[0];
+      const isNewestFirst = firstEntry.url.includes('test3.com');
+      
+      if (!isNewestFirst) {
+        return {
+          passed: false,
+          details: `Newest entry not first. First entry URL: ${firstEntry.url}, expected to contain 'test3.com'`
+        };
+      }
+      
+      return {
+        passed: true,
+        details: `History correctly ordered with newest first: ${historyArray.slice(0, 3).map(h => h.url).join(', ')}`
+      };
+    });
+
+    // Req 6.4, 6.5: Verify filter buttons work correctly
+    addTest('Req 6.4, 6.5', 'Filter buttons correctly filter history by verdict', async (doc, win) => {
+      // Switch to history tab
+      const historyTab = Array.from(doc.querySelectorAll('.nav-btn')).find(btn => btn.textContent.includes('History'));
+      historyTab.click();
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Get all filter buttons
+      const filterButtons = doc.querySelectorAll('.filter-btn');
+      const allBtn = Array.from(filterButtons).find(btn => btn.textContent === 'All');
+      const safeBtn = Array.from(filterButtons).find(btn => btn.textContent === 'Safe');
+      const suspBtn = Array.from(filterButtons).find(btn => btn.textContent === 'Suspicious');
+      const phishBtn = Array.from(filterButtons).find(btn => btn.textContent === 'Phishing');
+      
+      if (!allBtn || !safeBtn || !suspBtn || !phishBtn) {
+        return {
+          passed: false,
+          details: 'Not all filter buttons found'
+        };
+      }
+      
+      // Test Safe filter
+      safeBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const safeItems = doc.querySelectorAll('.hist-item');
+      const allSafe = Array.from(safeItems).every(item => {
+        const verdictEl = item.querySelector('.hist-verdict');
+        return verdictEl && verdictEl.textContent === 'safe';
+      });
+      
+      if (safeItems.length > 0 && !allSafe) {
+        return {
+          passed: false,
+          details: 'Safe filter showing non-safe items'
+        };
+      }
+      
+      // Test Suspicious filter
+      suspBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const suspItems = doc.querySelectorAll('.hist-item');
+      const allSusp = Array.from(suspItems).every(item => {
+        const verdictEl = item.querySelector('.hist-verdict');
+        return verdictEl && verdictEl.textContent === 'suspicious';
+      });
+      
+      if (suspItems.length > 0 && !allSusp) {
+        return {
+          passed: false,
+          details: 'Suspicious filter showing non-suspicious items'
+        };
+      }
+      
+      // Test Phishing filter
+      phishBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const phishItems = doc.querySelectorAll('.hist-item');
+      const allPhish = Array.from(phishItems).every(item => {
+        const verdictEl = item.querySelector('.hist-verdict');
+        return verdictEl && verdictEl.textContent === 'phishing';
+      });
+      
+      if (phishItems.length > 0 && !allPhish) {
+        return {
+          passed: false,
+          details: 'Phishing filter showing non-phishing items'
+        };
+      }
+      
+      // Test All filter
+      allBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const allItems = doc.querySelectorAll('.hist-item');
+      
+      return {
+        passed: true,
+        details: `Filters working correctly. All: ${allItems.length} items, Safe filter tested, Suspicious filter tested, Phishing filter tested`
+      };
+    });
+
+    // Req 6.6: Verify clicking history item loads URL and switches tabs
+    addTest('Req 6.6', 'Clicking history item loads URL and switches to Scanner tab', async (doc, win) => {
+      // Switch to history tab
+      const historyTab = Array.from(doc.querySelectorAll('.nav-btn')).find(btn => btn.textContent.includes('History'));
+      historyTab.click();
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Get first history item
+      const firstHistItem = doc.querySelector('.hist-item');
+      
+      if (!firstHistItem) {
+        return {
+          passed: false,
+          details: 'No history items found to click'
+        };
+      }
+      
+      // Get the URL from the history item
+      const histUrlEl = firstHistItem.querySelector('.hist-url');
+      const expectedUrl = histUrlEl ? histUrlEl.textContent : '';
+      
+      // Click the history item
+      firstHistItem.click();
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check if Scanner tab is active
+      const scannerPanel = doc.getElementById('panel-scanner');
+      const isScannerActive = scannerPanel && scannerPanel.classList.contains('active');
+      
+      if (!isScannerActive) {
+        return {
+          passed: false,
+          details: 'Scanner tab not activated after clicking history item'
+        };
+      }
+      
+      // Check if URL was loaded into input
+      const urlInput = doc.getElementById('url-input');
+      const loadedUrl = urlInput ? urlInput.value : '';
+      
+      if (loadedUrl !== expectedUrl) {
+        return {
+          passed: false,
+          details: `URL not loaded correctly. Expected: ${expectedUrl}, Got: ${loadedUrl}`
+        };
+      }
+      
+      return {
+        passed: true,
+        details: `History item click correctly loaded URL "${loadedUrl}" and switched to Scanner tab`
+      };
+    });
+
+    // Req 6.7: Verify Clear All button removes all entries
+    addTest('Req 6.7', 'Clear All button removes all history entries', async (doc, win) => {
+      // Switch to history tab
+      const historyTab = Array.from(doc.querySelectorAll('.nav-btn')).find(btn => btn.textContent.includes('History'));
+      historyTab.click();
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check initial history count
+      const initialCount = win.history.length;
+      
+      if (initialCount === 0) {
+        return {
+          passed: false,
+          details: 'No history entries to clear'
+        };
+      }
+      
+      // Find and click Clear All button
+      const clearBtn = Array.from(doc.querySelectorAll('.btn-sm')).find(btn => 
+        btn.textContent.toLowerCase().includes('clear')
+      );
+      
+      if (!clearBtn) {
+        return {
+          passed: false,
+          details: 'Clear All button not found'
+        };
+      }
+      
+      clearBtn.click();
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check if history is empty
+      const finalCount = win.history.length;
+      
+      if (finalCount !== 0) {
+        return {
+          passed: false,
+          details: `History not cleared. Initial: ${initialCount}, After clear: ${finalCount}`
+        };
+      }
+      
+      // Check if empty state is displayed
+      const emptyState = doc.querySelector('.empty-state');
+      
+      if (!emptyState) {
+        return {
+          passed: false,
+          details: 'Empty state not displayed after clearing history'
+        };
+      }
+      
+      return {
+        passed: true,
+        details: `Clear All successfully removed ${initialCount} history entries and displayed empty state`
+      };
+    });
+
+    // Req 6.8: Verify empty state displays when no matches
+    addTest('Req 6.8', 'Empty state displays when no history matches filter', async (doc, win) => {
+      // Clear history first
+      win.history = [];
+      
+      // Switch to history tab
+      const historyTab = Array.from(doc.querySelectorAll('.nav-btn')).find(btn => btn.textContent.includes('History'));
+      historyTab.click();
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Render history
+      win.renderHistory();
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check for empty state
+      const emptyState = doc.querySelector('.empty-state');
+      
+      if (!emptyState) {
+        return {
+          passed: false,
+          details: 'Empty state not displayed when history is empty'
+        };
+      }
+      
+      // Add some safe entries only
+      win.history = [
+        { url: 'https://safe1.com', verdict: 'safe', score: 10, time: 'Now' },
+        { url: 'https://safe2.com', verdict: 'safe', score: 15, time: 'Now' }
+      ];
+      
+      // Filter by phishing (should show empty state)
+      const filterButtons = doc.querySelectorAll('.filter-btn');
+      const phishBtn = Array.from(filterButtons).find(btn => btn.textContent === 'Phishing');
+      
+      if (!phishBtn) {
+        return {
+          passed: false,
+          details: 'Phishing filter button not found'
+        };
+      }
+      
+      phishBtn.click();
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check for empty state again
+      const emptyStateAfterFilter = doc.querySelector('.empty-state');
+      
+      if (!emptyStateAfterFilter) {
+        return {
+          passed: false,
+          details: 'Empty state not displayed when filter has no matches'
+        };
+      }
+      
+      return {
+        passed: true,
+        details: 'Empty state correctly displayed when history is empty and when filter has no matches'
+      };
+    });
+
+    // Initialize
+    updateSummary();
+  </script>
+</body>
+</html>

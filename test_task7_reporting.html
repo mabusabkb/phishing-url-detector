@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task 7: URL Reporting Verification</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 10px;
+    }
+    .test-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-item {
+      padding: 10px;
+      margin: 8px 0;
+      border-left: 4px solid #ccc;
+      background: #f9f9f9;
+    }
+    .test-item.pass {
+      border-left-color: #28a745;
+      background: #d4edda;
+    }
+    .test-item.fail {
+      border-left-color: #dc3545;
+      background: #f8d7da;
+    }
+    .test-item.pending {
+      border-left-color: #ffc107;
+      background: #fff3cd;
+    }
+    .test-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .test-error {
+      color: #721c24;
+      font-size: 14px;
+      margin-top: 4px;
+      font-family: monospace;
+    }
+    .summary {
+      background: #e7f3ff;
+      border: 2px solid #007bff;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 30px;
+    }
+    .summary.success {
+      background: #d4edda;
+      border-color: #28a745;
+    }
+    .summary.failure {
+      background: #f8d7da;
+      border-color: #dc3545;
+    }
+    .dashboard-container {
+      margin-top: 30px;
+      border: 2px solid #007bff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .dashboard-header {
+      background: #007bff;
+      color: white;
+      padding: 10px 20px;
+      font-weight: 600;
+    }
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>Task 7: URL Reporting Functionality Verification</h1>
+  
+  <div class="test-section">
+    <h2>Test Controls</h2>
+    <button id="run-tests">Run All Tests</button>
+    <button id="reset-tests">Reset</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Requirements Coverage</h2>
+    <div id="test-results"></div>
+  </div>
+
+  <div id="summary-section"></div>
+
+  <div class="dashboard-container">
+    <div class="dashboard-header">Dashboard Under Test</div>
+    <iframe id="dashboard-frame" src="phishing_detection_dashboard.html"></iframe>
+  </div>
+
+  <script>
+    const tests = [
+      {
+        id: 'req-9.1',
+        name: 'Req 9.1: Report button opens modal dialog',
+        test: (doc, win) => {
+          const modal = doc.getElementById('report-modal');
+          if (!modal) throw new Error('Modal element not found');
+          
+          // Initially modal should not have 'open' class
+          if (modal.classList.contains('open')) {
+            throw new Error('Modal should not be open initially');
+          }
+          
+          // Call openReport function
+          win.openReport('http://test-phishing.xyz');
+          
+          // Modal should now have 'open' class
+          if (!modal.classList.contains('open')) {
+            throw new Error('Modal should have "open" class after openReport() is called');
+          }
+          
+          // Clean up
+          win.closeReport();
+        }
+      },
+      {
+        id: 'req-9.2',
+        name: 'Req 9.2: Modal displays URL being reported',
+        test: (doc, win) => {
+          const testUrl = 'http://test-phishing-site.xyz/login';
+          win.openReport(testUrl);
+          
+          const urlDisplay = doc.getElementById('report-modal-url');
+          if (!urlDisplay) throw new Error('URL display element not found');
+          
+          const displayedText = urlDisplay.textContent;
+          
+          // Check if URL is displayed (may be truncated if long)
+          if (!displayedText.includes(testUrl) && !displayedText.includes(testUrl.substring(0, 60))) {
+            throw new Error(`URL not displayed correctly. Expected: ${testUrl}, Got: ${displayedText}`);
+          }
+          
+          win.closeReport();
+        }
+      },
+      {
+        id: 'req-9.3',
+        name: 'Req 9.3: Dropdown menu has all report categories',
+        test: (doc, win) => {
+          const dropdown = doc.getElementById('report-type');
+          if (!dropdown) throw new Error('Report type dropdown not found');
+          
+          const expectedCategories = [
+            'Phishing / Credential harvesting',
+            'Malware distribution',
+            'Brand impersonation',
+            'Spam / unwanted content',
+            'Other threat'
+          ];
+          
+          const options = Array.from(dropdown.options).map(opt => opt.textContent);
+          
+          expectedCategories.forEach(category => {
+            if (!options.includes(category)) {
+              throw new Error(`Missing category: ${category}`);
+            }
+          });
+          
+          if (options.length !== expectedCategories.length) {
+            throw new Error(`Expected ${expectedCategories.length} categories, found ${options.length}`);
+          }
+        }
+      },
+      {
+        id: 'req-9.4',
+        name: 'Req 9.4: Text area for additional details',
+        test: (doc, win) => {
+          const textarea = doc.getElementById('report-notes');
+          if (!textarea) throw new Error('Report notes textarea not found');
+          
+          if (textarea.tagName.toLowerCase() !== 'textarea') {
+            throw new Error('report-notes should be a textarea element');
+          }
+          
+          const placeholder = textarea.getAttribute('placeholder');
+          if (!placeholder || !placeholder.toLowerCase().includes('optional')) {
+            throw new Error('Textarea should have placeholder indicating optional details');
+          }
+        }
+      },
+      {
+        id: 'req-9.5',
+        name: 'Req 9.5: Cancel button exists and calls closeReport()',
+        test: (doc, win) => {
+          const modalActions = doc.querySelector('.modal-actions');
+          if (!modalActions) throw new Error('Modal actions container not found');
+          
+          const buttons = modalActions.querySelectorAll('button');
+          const cancelButton = Array.from(buttons).find(btn => 
+            btn.textContent.includes('Cancel')
+          );
+          
+          if (!cancelButton) throw new Error('Cancel button not found');
+          
+          // Check if it has onclick handler
+          const onclick = cancelButton.getAttribute('onclick');
+          if (!onclick || !onclick.includes('closeReport')) {
+            throw new Error('Cancel button should call closeReport()');
+          }
+        }
+      },
+      {
+        id: 'req-9.6',
+        name: 'Req 9.6: Submit Report button exists',
+        test: (doc, win) => {
+          const modalActions = doc.querySelector('.modal-actions');
+          if (!modalActions) throw new Error('Modal actions container not found');
+          
+          const buttons = modalActions.querySelectorAll('button');
+          const submitButton = Array.from(buttons).find(btn => 
+            btn.textContent.includes('Submit Report')
+          );
+          
+          if (!submitButton) throw new Error('Submit Report button not found');
+          
+          // Check if it has onclick handler
+          const onclick = submitButton.getAttribute('onclick');
+          if (!onclick || !onclick.includes('submitReport')) {
+            throw new Error('Submit Report button should call submitReport()');
+          }
+        }
+      },
+      {
+        id: 'req-9.7',
+        name: 'Req 9.7: Submit Report closes modal and shows confirmation',
+        test: (doc, win) => {
+          return new Promise((resolve, reject) => {
+            // First, run a scan to have a result
+            const urlInput = doc.getElementById('url-input');
+            urlInput.value = 'http://test-phishing.xyz';
+            win.startScan();
+            
+            // Wait for scan to complete
+            setTimeout(() => {
+              try {
+                win.openReport('http://test-phishing.xyz');
+                
+                const modal = doc.getElementById('report-modal');
+                if (!modal.classList.contains('open')) {
+                  throw new Error('Modal should be open before submit');
+                }
+                
+                // Submit report
+                win.submitReport();
+                
+                // Modal should be closed
+                if (modal.classList.contains('open')) {
+                  throw new Error('Modal should be closed after submit');
+                }
+                
+                // Check for success message in scanner result
+                const scannerResult = doc.getElementById('scanner-result');
+                const resultHtml = scannerResult.innerHTML;
+                
+                if (!resultHtml.includes('Report submitted successfully') && 
+                    !resultHtml.toLowerCase().includes('thank you')) {
+                  throw new Error('Success confirmation message not displayed');
+                }
+                
+                resolve();
+              } catch (error) {
+                reject(error);
+              }
+            }, 2500);
+          });
+        }
+      },
+      {
+        id: 'req-9.8',
+        name: 'Req 9.8: Clicking overlay closes modal',
+        test: (doc, win) => {
+          win.openReport('http://test.xyz');
+          
+          const modal = doc.getElementById('report-modal');
+          if (!modal.classList.contains('open')) {
+            throw new Error('Modal should be open');
+          }
+          
+          // Simulate click on overlay (the modal element itself, not its children)
+          const clickEvent = new win.MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: win
+          });
+          
+          // Set target to the overlay itself
+          Object.defineProperty(clickEvent, 'target', {
+            value: modal,
+            enumerable: true
+          });
+          
+          modal.dispatchEvent(clickEvent);
+          
+          // Modal should be closed
+          if (modal.classList.contains('open')) {
+            throw new Error('Modal should close when overlay is clicked');
+          }
+        }
+      },
+      {
+        id: 'additional-1',
+        name: 'Additional: Modal has correct structure',
+        test: (doc, win) => {
+          const modal = doc.querySelector('.modal');
+          if (!modal) throw new Error('Modal content container not found');
+          
+          const heading = modal.querySelector('h3');
+          if (!heading || !heading.textContent.includes('Report')) {
+            throw new Error('Modal should have heading with "Report"');
+          }
+          
+          const subtitle = modal.querySelector('.modal-sub');
+          if (!subtitle) throw new Error('Modal should have subtitle');
+        }
+      },
+      {
+        id: 'additional-2',
+        name: 'Additional: Report button only shows for Suspicious/Phishing',
+        test: (doc, win) => {
+          return new Promise((resolve, reject) => {
+            // Test with safe URL
+            const urlInput = doc.getElementById('url-input');
+            urlInput.value = 'https://github.com/anthropics/anthropic-sdk';
+            win.startScan();
+            
+            setTimeout(() => {
+              try {
+                const scannerResult = doc.getElementById('scanner-result');
+                const reportButtons = scannerResult.querySelectorAll('.btn-report');
+                
+                if (reportButtons.length > 0) {
+                  throw new Error('Report button should not appear for Safe verdict');
+                }
+                
+                resolve();
+              } catch (error) {
+                reject(error);
+              }
+            }, 2500);
+          });
+        }
+      }
+    ];
+
+    let testResults = [];
+
+    function renderTests() {
+      const container = document.getElementById('test-results');
+      container.innerHTML = tests.map(test => {
+        const result = testResults.find(r => r.id === test.id);
+        const status = result ? (result.passed ? 'pass' : 'fail') : 'pending';
+        const statusIcon = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '○';
+        
+        return `
+          <div class="test-item ${status}">
+            <div class="test-title">${statusIcon} ${test.name}</div>
+            ${result && !result.passed ? `<div class="test-error">Error: ${result.error}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSummary() {
+      const container = document.getElementById('summary-section');
+      const passed = testResults.filter(r => r.passed).length;
+      const failed = testResults.filter(r => !r.passed).length;
+      const total = testResults.length;
+      
+      if (total === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      
+      const allPassed = failed === 0;
+      
+      container.innerHTML = `
+        <div class="summary ${allPassed ? 'success' : 'failure'}">
+          <h2>Verification Summary</h2>
+          <p><strong>Total tests:</strong> ${total}</p>
+          <p><strong>Passed:</strong> ${passed}</p>
+          <p><strong>Failed:</strong> ${failed}</p>
+          <p style="margin-top: 15px; font-size: 18px;">
+            ${allPassed 
+              ? '✓ All URL reporting functionality requirements verified successfully!' 
+              : '✗ Some requirements failed verification. Please review the errors above.'}
+          </p>
+        </div>
+      `;
+    }
+
+    async function runTests() {
+      const iframe = document.getElementById('dashboard-frame');
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      const win = iframe.contentWindow;
+      
+      // Wait for dashboard to load
+      await new Promise(resolve => {
+        if (doc.readyState === 'complete') {
+          resolve();
+        } else {
+          iframe.addEventListener('load', resolve);
+        }
+      });
+      
+      // Additional wait for scripts to initialize
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      testResults = [];
+      
+      for (const test of tests) {
+        try {
+          const result = test.test(doc, win);
+          if (result instanceof Promise) {
+            await result;
+          }
+          testResults.push({ id: test.id, passed: true });
+        } catch (error) {
+          testResults.push({ id: test.id, passed: false, error: error.message });
+        }
+        renderTests();
+        renderSummary();
+        
+        // Small delay between tests
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    function resetTests() {
+      testResults = [];
+      renderTests();
+      renderSummary();
+      
+      // Reload iframe
+      const iframe = document.getElementById('dashboard-frame');
+      iframe.src = iframe.src;
+    }
+
+    document.getElementById('run-tests').addEventListener('click', () => {
+      document.getElementById('run-tests').disabled = true;
+      runTests().then(() => {
+        document.getElementById('run-tests').disabled = false;
+      });
+    });
+
+    document.getElementById('reset-tests').addEventListener('click', resetTests);
+
+    // Initial render
+    renderTests();
+  </script>
+</body>
+</html>

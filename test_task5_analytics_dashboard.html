@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task 5: Analytics Dashboard Verification</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-section h2 {
+      margin-top: 0;
+      color: #333;
+      border-bottom: 2px solid #e0e0e0;
+      padding-bottom: 10px;
+    }
+    .test-case {
+      margin: 15px 0;
+      padding: 12px;
+      border-left: 4px solid #ddd;
+      background: #fafafa;
+    }
+    .test-case.pass {
+      border-left-color: #1D9E75;
+      background: #E1F5EE;
+    }
+    .test-case.fail {
+      border-left-color: #A32D2D;
+      background: #FCEBEB;
+    }
+    .test-case h3 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .test-case p {
+      margin: 4px 0;
+      font-size: 13px;
+    }
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    .status.pass {
+      background: #1D9E75;
+      color: white;
+    }
+    .status.fail {
+      background: #A32D2D;
+      color: white;
+    }
+    .summary {
+      background: #333;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .summary h1 {
+      margin: 0 0 10px 0;
+    }
+    .summary-stats {
+      display: flex;
+      gap: 20px;
+      margin-top: 15px;
+    }
+    .summary-stat {
+      flex: 1;
+    }
+    .summary-stat .label {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    .summary-stat .value {
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .iframe-container {
+      margin: 20px 0;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    iframe {
+      width: 100%;
+      height: 800px;
+      border: none;
+    }
+    .code {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="summary">
+    <h1>Task 5: Analytics Dashboard Verification</h1>
+    <p>Verifying Requirements 7.1-7.9: Analytics Dashboard functionality</p>
+    <div class="summary-stats">
+      <div class="summary-stat">
+        <div class="label">Total Tests</div>
+        <div class="value" id="total-tests">0</div>
+      </div>
+      <div class="summary-stat">
+        <div class="label">Passed</div>
+        <div class="value" style="color: #1D9E75" id="passed-tests">0</div>
+      </div>
+      <div class="summary-stat">
+        <div class="label">Failed</div>
+        <div class="value" style="color: #E24B4A" id="failed-tests">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Dashboard Under Test</h2>
+    <div class="iframe-container">
+      <iframe id="dashboard-iframe" src="phishing_detection_dashboard.html"></iframe>
+    </div>
+  </div>
+
+  <div id="test-results"></div>
+
+  <script>
+    const results = [];
+    
+    function addResult(requirement, description, passed, details) {
+      results.push({ requirement, description, passed, details });
+    }
+
+    function renderResults() {
+      const container = document.getElementById('test-results');
+      const groupedResults = {};
+      
+      results.forEach(r => {
+        if (!groupedResults[r.requirement]) {
+          groupedResults[r.requirement] = [];
+        }
+        groupedResults[r.requirement].push(r);
+      });
+
+      let html = '';
+      Object.keys(groupedResults).forEach(req => {
+        const tests = groupedResults[req];
+        const allPassed = tests.every(t => t.passed);
+        
+        html += `<div class="test-section">
+          <h2>${req} <span class="status ${allPassed ? 'pass' : 'fail'}">${allPassed ? 'PASS' : 'FAIL'}</span></h2>`;
+        
+        tests.forEach(test => {
+          html += `<div class="test-case ${test.passed ? 'pass' : 'fail'}">
+            <h3>${test.description} <span class="status ${test.passed ? 'pass' : 'fail'}">${test.passed ? 'PASS' : 'FAIL'}</span></h3>
+            <p>${test.details}</p>
+          </div>`;
+        });
+        
+        html += '</div>';
+      });
+
+      container.innerHTML = html;
+
+      // Update summary
+      const total = results.length;
+      const passed = results.filter(r => r.passed).length;
+      const failed = total - passed;
+      
+      document.getElementById('total-tests').textContent = total;
+      document.getElementById('passed-tests').textContent = passed;
+      document.getElementById('failed-tests').textContent = failed;
+    }
+
+    // Wait for iframe to load
+    window.addEventListener('load', () => {
+      const iframe = document.getElementById('dashboard-iframe');
+      
+      setTimeout(() => {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+          const iframeWindow = iframe.contentWindow;
+
+          // Switch to Analytics tab first
+          const analyticsBtn = iframeDoc.querySelectorAll('.nav-btn')[2];
+          analyticsBtn.click();
+
+          // Wait for tab switch and chart rendering
+          setTimeout(() => {
+            runTests(iframeDoc, iframeWindow);
+          }, 500);
+        } catch (e) {
+          console.error('Error accessing iframe:', e);
+          addResult('Error', 'Failed to access dashboard', false, e.message);
+          renderResults();
+        }
+      }, 1000);
+    });
+
+    function runTests(doc, win) {
+      // Requirement 7.1: Total scanned URLs count
+      const statTotal = doc.getElementById('stat-total');
+      const totalValue = statTotal ? statTotal.textContent : null;
+      const totalIsNumber = !isNaN(parseInt(totalValue));
+      addResult(
+        'Requirement 7.1',
+        'Display total scanned URLs count',
+        statTotal !== null && totalIsNumber,
+        statTotal ? `Found element with value: ${totalValue}` : 'Element #stat-total not found'
+      );
+
+      // Requirement 7.2: Phishing URLs blocked count
+      const statPhish = doc.getElementById('stat-phish');
+      const phishValue = statPhish ? statPhish.textContent : null;
+      const phishIsNumber = !isNaN(parseInt(phishValue));
+      addResult(
+        'Requirement 7.2',
+        'Display phishing URLs blocked count',
+        statPhish !== null && phishIsNumber,
+        statPhish ? `Found element with value: ${phishValue}` : 'Element #stat-phish not found'
+      );
+
+      // Requirement 7.3: Suspicious URLs flagged count
+      const statSusp = doc.getElementById('stat-susp');
+      const suspValue = statSusp ? statSusp.textContent : null;
+      const suspIsNumber = !isNaN(parseInt(suspValue));
+      addResult(
+        'Requirement 7.3',
+        'Display suspicious URLs flagged count',
+        statSusp !== null && suspIsNumber,
+        statSusp ? `Found element with value: ${suspValue}` : 'Element #stat-susp not found'
+      );
+
+      // Requirement 7.4: Detection rate display
+      const statRate = doc.getElementById('stat-rate');
+      const rateValue = statRate ? statRate.textContent : null;
+      const rateIsValid = rateValue && (rateValue.includes('%') || rateValue === '—');
+      addResult(
+        'Requirement 7.4',
+        'Display detection rate',
+        statRate !== null && rateIsValid,
+        statRate ? `Found element with value: ${rateValue}` : 'Element #stat-rate not found'
+      );
+
+      // Requirement 7.5: Detection rate calculation formula
+      if (totalIsNumber && phishIsNumber && suspIsNumber) {
+        const total = parseInt(totalValue);
+        const phish = parseInt(phishValue);
+        const susp = parseInt(suspValue);
+        const expectedRate = total > 0 ? Math.round((phish + susp) / total * 100) : 0;
+        const actualRate = rateValue === '—' ? 0 : parseInt(rateValue);
+        const formulaCorrect = total === 0 ? rateValue === '—' : actualRate === expectedRate;
+        
+        addResult(
+          'Requirement 7.5',
+          'Detection rate formula: (phishing + suspicious) / total × 100',
+          formulaCorrect,
+          `Expected: ${total === 0 ? '—' : expectedRate + '%'}, Actual: ${rateValue}. Formula: (${phish} + ${susp}) / ${total} × 100`
+        );
+      } else {
+        addResult(
+          'Requirement 7.5',
+          'Detection rate formula: (phishing + suspicious) / total × 100',
+          false,
+          'Cannot verify formula - statistics values not available'
+        );
+      }
+
+      // Requirement 7.6: Donut chart for verdict distribution
+      const distChart = doc.getElementById('distChart');
+      const distChartExists = distChart !== null;
+      const distChartIsCanvas = distChart && distChart.tagName === 'CANVAS';
+      const distChartHasAriaLabel = distChart && distChart.hasAttribute('aria-label');
+      
+      addResult(
+        'Requirement 7.6',
+        'Display donut chart showing verdict distribution',
+        distChartExists && distChartIsCanvas,
+        distChartExists 
+          ? `Found canvas element. ARIA label: ${distChartHasAriaLabel ? 'Yes' : 'No'}` 
+          : 'Canvas #distChart not found'
+      );
+
+      // Check if Chart.js instance exists
+      if (win.distChart) {
+        const chartType = win.distChart.config.type;
+        const chartCutout = win.distChart.config.options.cutout;
+        const isDonut = chartType === 'doughnut' && chartCutout === '65%';
+        
+        addResult(
+          'Requirement 7.6',
+          'Donut chart configuration (type: doughnut, cutout: 65%)',
+          isDonut,
+          `Chart type: ${chartType}, Cutout: ${chartCutout}`
+        );
+      } else {
+        addResult(
+          'Requirement 7.6',
+          'Donut chart configuration',
+          false,
+          'Chart.js instance not found in window.distChart'
+        );
+      }
+
+      // Requirement 7.7: Bar chart for top triggered signals
+      const featChart = doc.getElementById('featChart');
+      const featChartExists = featChart !== null;
+      const featChartIsCanvas = featChart && featChart.tagName === 'CANVAS';
+      const featChartHasAriaLabel = featChart && featChart.hasAttribute('aria-label');
+      
+      addResult(
+        'Requirement 7.7',
+        'Display bar chart showing top triggered detection signals',
+        featChartExists && featChartIsCanvas,
+        featChartExists 
+          ? `Found canvas element. ARIA label: ${featChartHasAriaLabel ? 'Yes' : 'No'}` 
+          : 'Canvas #featChart not found'
+      );
+
+      // Check if Chart.js instance exists
+      if (win.featChart) {
+        const chartType = win.featChart.config.type;
+        const isBar = chartType === 'bar';
+        
+        addResult(
+          'Requirement 7.7',
+          'Bar chart configuration (type: bar)',
+          isBar,
+          `Chart type: ${chartType}`
+        );
+      } else {
+        addResult(
+          'Requirement 7.7',
+          'Bar chart configuration',
+          false,
+          'Chart.js instance not found in window.featChart'
+        );
+      }
+
+      // Requirement 7.8: Charts update when switching to Analytics tab
+      // We already switched to Analytics tab, so check if charts are rendered
+      const chartsRendered = win.distChart !== null && win.featChart !== null;
+      addResult(
+        'Requirement 7.8',
+        'Charts update when switching to Analytics tab',
+        chartsRendered,
+        chartsRendered 
+          ? 'Both charts rendered after switching to Analytics tab' 
+          : 'Charts not rendered after tab switch'
+      );
+
+      // Requirement 7.9: Color coding verification
+      const legendDist = doc.getElementById('legend-dist');
+      let colorCodingCorrect = false;
+      let colorDetails = '';
+      
+      if (legendDist) {
+        const legendHTML = legendDist.innerHTML;
+        const hasGreen = legendHTML.includes('#1D9E75') || legendHTML.includes('1D9E75');
+        const hasOrange = legendHTML.includes('#EF9F27') || legendHTML.includes('EF9F27');
+        const hasRed = legendHTML.includes('#E24B4A') || legendHTML.includes('E24B4A');
+        const hasSafeLabel = legendHTML.includes('Safe');
+        const hasSuspiciousLabel = legendHTML.includes('Suspicious');
+        const hasPhishingLabel = legendHTML.includes('Phishing');
+        
+        colorCodingCorrect = hasGreen && hasOrange && hasRed && hasSafeLabel && hasSuspiciousLabel && hasPhishingLabel;
+        colorDetails = `Green (Safe): ${hasGreen}, Orange (Suspicious): ${hasOrange}, Red (Phishing): ${hasRed}`;
+      } else {
+        colorDetails = 'Legend element not found';
+      }
+      
+      addResult(
+        'Requirement 7.9',
+        'Color coding: green=Safe, orange=Suspicious, red=Phishing',
+        colorCodingCorrect,
+        colorDetails
+      );
+
+      // Additional verification: Check stat card colors
+      if (statPhish) {
+        const phishColor = window.getComputedStyle(statPhish).color;
+        addResult(
+          'Requirement 7.9',
+          'Phishing stat uses red color',
+          phishColor.includes('163, 45, 45') || phishColor.includes('#A32D2D'),
+          `Phishing stat color: ${phishColor}`
+        );
+      }
+
+      if (statSusp) {
+        const suspColor = window.getComputedStyle(statSusp).color;
+        addResult(
+          'Requirement 7.9',
+          'Suspicious stat uses orange color',
+          suspColor.includes('186, 117, 23') || suspColor.includes('#BA7517'),
+          `Suspicious stat color: ${suspColor}`
+        );
+      }
+
+      if (statRate) {
+        const rateColor = window.getComputedStyle(statRate).color;
+        addResult(
+          'Requirement 7.9',
+          'Detection rate stat uses green color',
+          rateColor.includes('29, 158, 117') || rateColor.includes('#1D9E75'),
+          `Detection rate color: ${rateColor}`
+        );
+      }
+
+      renderResults();
+    }
+  </script>
+</body>
+</html>
